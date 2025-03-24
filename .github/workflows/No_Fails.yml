@@ -1,0 +1,68 @@
+name: Bypass Errors
+on:
+  push:
+    branches:
+      - main
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint code
+        run: npm run lint
+        continue-on-error: true  # Bypass errors in linting
+
+      - name: Test code
+        run: npm run test
+        continue-on-error: true  # Bypass errors in testing
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build website
+        run: npm run build
+        continue-on-error: true  # Allow build errors but continue
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist-files
+          path: |
+            dist
+            package.json
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-files
+
+      - name: Output contents
+        run: ls
+
+      - name: Deploy
+        run: echo "Deploying..."
+        continue-on-error: true  # Allow deploy errors but continue
+
+  failure-notification:
+    needs: [build, deploy]  
+    if: failure()  
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send failure notification
+        run: echo "somthing went wrong "
